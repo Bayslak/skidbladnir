@@ -1,0 +1,13 @@
+# Odin build output
+bin/
+*.exe
+*.pdb
+*.obj
+*.dll
+
+# VS Code
+.vscode/
+
+# OS
+Thumbs.db
+desktop.ini
