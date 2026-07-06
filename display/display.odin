@@ -1,4 +1,4 @@
-package skidbladnir
+package display 
 
 import "core:fmt"
 import "core:os"

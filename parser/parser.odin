@@ -1,4 +1,4 @@
-package skidbladnir
+package parser 
 
 import "core:fmt"
 import "core:os"
