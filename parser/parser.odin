@@ -8,11 +8,20 @@ parse_input :: proc(input: string) -> (result: bool, command: string) {
     arguments := strings.split(input, " ")
     n_arguments := len(arguments)
 
-    exists, cmd := get_built_in(arguments[0])
+    if len(arguments) == 0 do return
 
-    if exists {
+    bi_exists, cmd := get_built_in(arguments[0])
+
+    if bi_exists {
         // resolve builtins
         return resolve_built_ins(cmd, arguments[1:n_arguments])
+    }
+
+    ex_result, ex_err := execute_command(arguments)
+
+    if !ex_result {
+        fmt.printf("There was a problem executing command %v: %v\n", arguments[0], ex_err)
+        return false, arguments[0]
     }
 
     return false, ""
