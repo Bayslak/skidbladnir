@@ -6,7 +6,7 @@ import "core:strings"
 
 display_wd :: proc() {
     wd, err := os.get_working_directory(context.temp_allocator)
-    folders := strings.split(wd, "\\")
+    folders := strings.split(wd, "\\", context.temp_allocator)
     n_folders := len(folders)
 
     fmt.printf("%v> ", folders[n_folders - 1])

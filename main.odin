@@ -4,24 +4,32 @@ import "core:fmt"
 import "core:os"
 import "core:strings"
 
-import Input "./inputs"
-import Parser "./parser"
-import Display "./display"
+import input "./inputs"
+import parser "./parser"
+import display "./display"
+import tracker "./memory"
 
 main :: proc() {
-    fmt.println("Here we are using SKIDBLADNIR")
+
+    track := tracker.start_tracking()
 
     working := true
     
     for working {
-        Display.display_wd()
+        display.display_wd()
 
-        user_input := Input.read_user_input()
-        result, cmd := Parser.parse_input(user_input)
+        user_input := input.read_user_input()
+        arguments := strings.split(user_input, " ", context.temp_allocator)
+        result, cmd := parser.parse_input(arguments)
 
         if cmd == "exit" {
             working = false;
             return;
         }
+
+        tracker.check_memory_usage(&track)
+
+        free_all()
+        free_all(context.temp_allocator)
     }
 }

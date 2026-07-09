@@ -16,7 +16,7 @@ read_user_input :: proc() -> string {
 
     // now i just need to recover all of the user input
     input := string(buf[:n]) // n is the number of byte written in the buffer by the read method
-    trimmed := strings.clone(strings.trim_right(input, "\n\r")) // again, I should trim by this freaking new line thing
+    trimmed := strings.clone(strings.trim_right(input, "\n\r"), context.temp_allocator) // again, I should trim by this freaking new line thing
 
     return trimmed
 }

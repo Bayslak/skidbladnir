@@ -4,8 +4,7 @@ import "core:fmt"
 import "core:os"
 import "core:strings"
 
-parse_input :: proc(input: string) -> (result: bool, command: string) {
-    arguments := strings.split(input, " ")
+parse_input :: proc(arguments: []string) -> (result: bool, command: string) {
     n_arguments := len(arguments)
 
     if len(arguments) == 0 do return
