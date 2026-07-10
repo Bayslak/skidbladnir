@@ -18,7 +18,12 @@ main :: proc() {
     for working {
         display.display_wd()
 
-        user_input := input.read_user_input()
+        user_input, valid := input.read_user_input()
+
+        if !valid {
+            break
+        }
+
         arguments := strings.split(user_input, " ", context.temp_allocator)
         result, cmd := parser.parse_input(arguments)
 
