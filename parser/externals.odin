@@ -4,9 +4,15 @@ import "core:fmt"
 import "core:os"
 import "core:strings"
 
-execute_command :: proc(arguments: []string) -> (result: bool, command: string) {
+execute_command :: proc(arguments: ^[dynamic]string) -> (result: bool, command: string) {
+
+    // uncomment this to debug arguments
+    //for argument in 0..<len(arguments) {
+    //    fmt.println(arguments[argument])
+    //}
+
     process, start_err := os.process_start(os.Process_Desc{
-        command = arguments,
+        command = arguments^[:],
         stdin = os.stdin,
         stdout = os.stdout,
         stderr = os.stderr
