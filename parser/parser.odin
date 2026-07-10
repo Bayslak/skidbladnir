@@ -47,14 +47,18 @@ resolve_arguments :: proc(arguments: []string, arguments_to_return: ^[dynamic]st
             strings.write_string(&builder, argument[1:len_argument])
             strings.write_byte(&builder, ' ')
         } else if start_complex_arg {
-            strings.write_string(&builder, argument[0:len_argument-1])
-            strings.write_byte(&builder, ' ')
-
+            
             if argument[len_argument - 1] == '"' {
+                strings.write_string(&builder, argument[0:len_argument-1])
+                strings.write_byte(&builder, ' ')
+
                 start_complex_arg = false
                 complex_arg := strings.to_string(builder)
                 strings.builder_destroy(&builder)
                 append(&arguments_to_return^, complex_arg)
+            } else {
+                strings.write_string(&builder, argument)
+                strings.write_byte(&builder, ' ')
             }
         } else {
             append(&arguments_to_return^, argument)
