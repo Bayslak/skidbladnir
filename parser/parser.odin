@@ -44,10 +44,10 @@ resolve_arguments :: proc(arguments: []string, arguments_to_return: ^[dynamic]st
 
         if argument[0] == '"' && !start_complex_arg {
             start_complex_arg = true
-            strings.write_string(&builder, argument)
+            strings.write_string(&builder, argument[1:len_argument])
             strings.write_byte(&builder, ' ')
         } else if start_complex_arg {
-            strings.write_string(&builder, argument)
+            strings.write_string(&builder, argument[0:len_argument-1])
             strings.write_byte(&builder, ' ')
 
             if argument[len_argument - 1] == '"' {
