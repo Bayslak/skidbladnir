@@ -62,7 +62,7 @@ resolve_arguments :: proc(arguments: []string, arguments_to_return: ^[dynamic]st
             }
         } else {
             append(&arguments_to_return^, argument)
-            strings.builder_destroy(&builder) // not so sure about this to be fair
+            //strings.builder_destroy(&builder) // not so sure about this to be fair
         }
     }
 
