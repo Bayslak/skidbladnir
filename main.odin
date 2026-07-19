@@ -33,7 +33,6 @@ main :: proc() {
 
         tracker.check_memory_usage(&track)
 
-        free_all()
         free_all(context.temp_allocator)
     }
 }
