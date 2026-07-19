@@ -13,6 +13,9 @@ import tracker "./memory"
 
 main :: proc() {
 
+    // setups
+    parser.setup_built_ins()
+
     track := tracker.start_tracking()
 
     working := true

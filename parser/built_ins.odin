@@ -6,21 +6,28 @@ import "core:strings"
 import "core:strconv"
 
 BUILTINS :: []string{"cd", "pwd", "munin", "exit"}
+builtins_map: map[string]string
+
+setup_built_ins :: proc() {
+    builtins_map = make(map[string]string)
+    builtins_map["edda"] = "shows implemented built ins"
+    builtins_map["cd"] = "change directory"
+    builtins_map["pwd"] = "print working directory"
+    builtins_map["munin"] = "print list of history commands"
+    builtins_map["exit"] = "exit skidbladnir"
+}
 
 get_built_in :: proc(cmd: string) -> (exists: bool, command: string) {
-    for &built_in in BUILTINS {
-    if built_in == cmd {
-            return true, cmd
-        }
-    }
-
-    return false, cmd
+    ok := cmd in builtins_map
+    return ok, cmd
 }
 
 resolve_built_ins :: proc(arguments: []Token, history: ^[dynamic]string) -> (result: bool, command: string) {
 
     cmd := arguments[0].value
     switch cmd {
+        case "edda":
+            return resolve_edda()
         case "cd":
             return change_directory_built_in(arguments)
         case "pwd":
@@ -32,6 +39,17 @@ resolve_built_ins :: proc(arguments: []Token, history: ^[dynamic]string) -> (res
     }
 
     return false, ""
+}
+
+resolve_edda :: proc() -> (result: bool, command: string) {
+    fmt.println("In the skidbladnir shell you can find the following built ins: ")
+    fmt.println()
+
+    for key, &value in builtins_map {
+        fmt.printf("%v - %v\n", key, value)
+    }
+
+    return true, "edda"
 }
 
 change_directory_built_in :: proc(arguments: []Token) -> (result: bool, command: string) {
