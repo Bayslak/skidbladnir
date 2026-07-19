@@ -16,8 +16,9 @@ get_built_in :: proc(cmd: string) -> (exists: bool, command: string) {
     return false, cmd
 }
 
-resolve_built_ins :: proc(cmd: string, arguments: []string) -> (result: bool, command: string) {
+resolve_built_ins :: proc(arguments: []Token) -> (result: bool, command: string) {
 
+    cmd := arguments[0].value
     switch cmd {
         case "cd":
             return change_directory_built_in(arguments)
@@ -30,10 +31,10 @@ resolve_built_ins :: proc(cmd: string, arguments: []string) -> (result: bool, co
     return false, ""
 }
 
-change_directory_built_in :: proc(arguments: []string) -> (result: bool, command: string) {
+change_directory_built_in :: proc(arguments: []Token) -> (result: bool, command: string) {
     
     current_directory, gwd_err := os.get_working_directory(context.temp_allocator)
-    directory_to_go_to := arguments[0]
+    directory_to_go_to := arguments[1].value
 
     if directory_to_go_to == ".." {
         // we need to go to parent

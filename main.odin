@@ -24,8 +24,7 @@ main :: proc() {
             break
         }
 
-        arguments := strings.split(user_input, " ", context.temp_allocator)
-        result, cmd := parser.parse_input(arguments)
+        result, cmd := parser.parse_input(user_input)
 
         if cmd == "exit" {
             working = false;

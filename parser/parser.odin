@@ -4,13 +4,11 @@ import "core:fmt"
 import "core:os"
 import "core:strings"
 
-parse_input :: proc(arguments: []string) -> (result: bool, command: string) {
-    n_arguments := len(arguments)
-
-    if len(arguments) == 0 do return
+parse_input :: proc(input: string) -> (result: bool, command: string) {
+    if len(input) == 0 do return
  
     // here maybe we tokenize?
-    tokenized, err := tokenize_arguments(arguments)
+    tokenized, err := tokenize_input(input)
 
     if err != nil {
         fmt.printf("There were some problems with the input typed in. Please, try again. %v \n", err)
@@ -20,25 +18,18 @@ parse_input :: proc(arguments: []string) -> (result: bool, command: string) {
         fmt.printf("%v, value: %v\n", tokenized[n].lexeme, tokenized[n].value)
     }
 
-    cmd_typed := arguments[0]
-    arguments_to_use: [dynamic]string
-    append(&arguments_to_use, cmd_typed)
-
-    resolve_arguments(arguments[1:n_arguments], &arguments_to_use)
-
-
-    bi_exists, _ := get_built_in(cmd_typed)
+    bi_exists, _ := get_built_in(tokenized[0].value)
 
     if bi_exists {
         // resolve builtins
-        return resolve_built_ins(cmd_typed, arguments_to_use[1:n_arguments])
+        return resolve_built_ins(tokenized[:])
     }
 
-    ex_result, ex_err := execute_command(&arguments_to_use)
+    ex_result, ex_err := execute_command(&tokenized)
 
     if !ex_result {
-        fmt.printf("There was a problem executing command %v: %v\n", cmd_typed, ex_err)
-        return false, cmd_typed
+        fmt.printf("There was a problem executing command %v: %v\n", tokenized[0].value, ex_err)
+        return false, tokenized[0].value
     }
 
     return false, ""
@@ -81,62 +72,76 @@ resolve_arguments :: proc(arguments: []string, arguments_to_return: ^[dynamic]st
     return arguments_to_return^
 }
 
-tokenize_arguments :: proc(arguments: []string) -> (result: [dynamic]Token, error: LexerError) {
+tokenize_input :: proc(input: string) -> (result: [dynamic]Token, error: LexemeError) {
     
     tokenized_arguments: [dynamic]Token
-    start_complex_arg := false 
+    is_complex_arg := false 
     builder: strings.Builder
     strings.builder_init(&builder, context.temp_allocator)
 
-    for n in 0..<len(arguments) {
-        argument := arguments[n]
-        len_argument := len(argument)
+    for n in 0..<len(input) {
+        char := input[n]
 
-        if argument[0] == '"' && !start_complex_arg {
-            start_complex_arg = true
-            strings.write_string(&builder, argument[1:len_argument])
-            strings.write_byte(&builder, ' ')
-        } else if start_complex_arg {
-            
-            if argument[len_argument - 1] == '"' {
-                strings.write_string(&builder, argument[0:len_argument-1])
-                strings.write_byte(&builder, ' ')
-
-                start_complex_arg = false
-                complex_arg := strings.to_string(builder)
-                strings.builder_destroy(&builder)
-
-                token := Token {
-                    lexeme = Lexeme.WORD,
-                    value = complex_arg
+        if is_complex_arg {
+            if char == '"' {
+                    is_complex_arg = false
+                    complex_arg := strings.to_string(builder)
+                    strings.builder_destroy(&builder)
+    
+                    token := Token {
+                        lexeme = Lexeme.WORD,
+                        value = complex_arg
+                    }
+    
+                    append(&tokenized_arguments, token)
+                    continue
                 }
 
-                append(&tokenized_arguments, token)
-            } else {
-                strings.write_string(&builder, argument)
-                strings.write_byte(&builder, ' ')
-            }
-        } else {
-            
-            token: Token
-            if len(argument) == 1 {
-                is_lexeme := lexeme_parser(argument[0]) or_return
-                token = Token {
-                    lexeme = is_lexeme,
-                    value = argument
-                }
-            }
-            else {
-                token = Token {
-                    lexeme = Lexeme.WORD,
-                    value = argument
-                }
+            strings.write_byte(&builder, char)
+            continue
+        }
+
+        if char == '"' {
+            is_complex_arg = true
+            continue
+        }
+
+        if char == ' ' {
+            arg := strings.to_string(builder)
+            strings.builder_destroy(&builder)
+
+            token := Token {
+                lexeme = Lexeme.WORD,
+                value = arg
             }
 
             append(&tokenized_arguments, token)
-            //strings.builder_destroy(&builder) // not so sure about this to be fair
+            continue
         }
+
+        is_lexeme := lexeme_parser(char) or_return
+        if is_lexeme != Lexeme.WORD {
+            token := Token {
+                lexeme = is_lexeme,
+            }
+            append(&tokenized_arguments, token)
+            strings.builder_destroy(&builder)
+            continue
+        }
+
+        strings.write_byte(&builder, char)
     }
 
-    return tokenized_arguments, TokenizationError.None
+    if strings.builder_len(builder) > 0 {
+        last_string := strings.to_string(builder)
+        token := Token {
+            lexeme = Lexeme.WORD,
+            value = last_string
+        }
+        
+        append(&tokenized_arguments, token)
+    }
+
+    strings.builder_destroy(&builder)
+    return tokenized_arguments, LexemeError.None
 }

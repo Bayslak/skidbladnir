@@ -17,11 +17,6 @@ Token :: struct {
 
 TokenizationError :: enum { None, UndefinedToken }
 
-LexerError :: union {
-    LexemeError,
-    TokenizationError
-}
-
 lexeme_parser :: proc(possible_lexeme: u8) -> (result: Lexeme, error: LexemeError) {
     switch {
         case possible_lexeme == '|':
