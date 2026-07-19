@@ -14,9 +14,9 @@ parse_input :: proc(input: string) -> (result: bool, command: string) {
         fmt.printf("There were some problems with the input typed in. Please, try again. %v \n", err)
     }
 
-    //for n in 0..<len(tokenized) {
-    //    fmt.printf("%v, value: %v\n", tokenized[n].lexeme, tokenized[n].value)
-    //}
+    for n in 0..<len(tokenized) {
+        fmt.printf("%v, value: %v\n", tokenized[n].lexeme, tokenized[n].value)
+    }
 
     bi_exists, _ := get_built_in(tokenized[0].value)
 
@@ -47,18 +47,10 @@ tokenize_input :: proc(input: string) -> (result: [dynamic]Token, error: LexemeE
 
         if is_complex_arg {
             if char == '"' {
-                    is_complex_arg = false
-                    complex_arg := strings.to_string(builder)
-                    strings.builder_destroy(&builder)
-    
-                    token := Token {
-                        lexeme = Lexeme.WORD,
-                        value = complex_arg
-                    }
-    
-                    append(&tokenized_arguments, token)
-                    continue
-                }
+                is_complex_arg = false
+                flush_word(&builder, &tokenized_arguments)
+                continue
+            }
 
             strings.write_byte(&builder, char)
             continue
@@ -70,15 +62,7 @@ tokenize_input :: proc(input: string) -> (result: [dynamic]Token, error: LexemeE
         }
 
         if char == ' ' {
-            arg := strings.to_string(builder)
-            strings.builder_destroy(&builder)
-
-            token := Token {
-                lexeme = Lexeme.WORD,
-                value = arg
-            }
-
-            append(&tokenized_arguments, token)
+            flush_word(&builder, &tokenized_arguments)
             continue
         }
 
@@ -88,7 +72,7 @@ tokenize_input :: proc(input: string) -> (result: [dynamic]Token, error: LexemeE
                 lexeme = is_lexeme,
             }
             append(&tokenized_arguments, token)
-            strings.builder_destroy(&builder)
+            strings.builder_reset(&builder)
             continue
         }
 
@@ -96,15 +80,21 @@ tokenize_input :: proc(input: string) -> (result: [dynamic]Token, error: LexemeE
     }
 
     if strings.builder_len(builder) > 0 {
-        last_string := strings.to_string(builder)
-        token := Token {
-            lexeme = Lexeme.WORD,
-            value = last_string
-        }
-        
-        append(&tokenized_arguments, token)
+        flush_word(&builder, &tokenized_arguments)
     }
 
     strings.builder_destroy(&builder)
     return tokenized_arguments, LexemeError.None
+}
+
+flush_word :: proc(builder: ^strings.Builder, tokens: ^[dynamic]Token) {
+    if strings.builder_len(builder^) == 0 { return }
+
+    word := strings.clone(strings.to_string(builder^), context.temp_allocator)
+    token := Token {
+        lexeme = Lexeme.WORD,
+        value = word
+    }
+    append(tokens, token)
+    strings.builder_reset(builder)
 }

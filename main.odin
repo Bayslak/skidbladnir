@@ -3,11 +3,13 @@ package skidbladnir
 import "core:fmt"
 import "core:os"
 import "core:strings"
+import "core:bufio"
 
 import input "./inputs"
 import parser "./parser"
 import display "./display"
 import tracker "./memory"
+
 
 main :: proc() {
 
