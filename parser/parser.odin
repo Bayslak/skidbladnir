@@ -4,7 +4,7 @@ import "core:fmt"
 import "core:os"
 import "core:strings"
 
-parse_input :: proc(input: string) -> (result: bool, command: string) {
+parse_input :: proc(input: string, history: ^[dynamic]string) -> (result: bool, command: string) {
     if len(input) == 0 do return
  
     // here maybe we tokenize?
@@ -14,15 +14,15 @@ parse_input :: proc(input: string) -> (result: bool, command: string) {
         fmt.printf("There were some problems with the input typed in. Please, try again. %v \n", err)
     }
 
-    for n in 0..<len(tokenized) {
-        fmt.printf("%v, value: %v\n", tokenized[n].lexeme, tokenized[n].value)
-    }
+    //for n in 0..<len(tokenized) {
+    //    fmt.printf("%v, value: %v\n", tokenized[n].lexeme, tokenized[n].value)
+    //}
 
     bi_exists, _ := get_built_in(tokenized[0].value)
 
     if bi_exists {
         // resolve builtins
-        return resolve_built_ins(tokenized[:])
+        return resolve_built_ins(tokenized[:], history)
     }
 
     ex_result, ex_err := execute_command(&tokenized)
