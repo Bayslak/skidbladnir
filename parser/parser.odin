@@ -32,7 +32,7 @@ parse_input :: proc(input: string, history: ^[dynamic]string) -> (result: bool, 
         return false, tokenized[0].value
     }
 
-    return false, ""
+    return true, tokenized[0].value
 }
 
 tokenize_input :: proc(input: string) -> (result: [dynamic]Token, error: LexemeError) {
