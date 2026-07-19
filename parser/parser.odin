@@ -14,9 +14,9 @@ parse_input :: proc(input: string) -> (result: bool, command: string) {
         fmt.printf("There were some problems with the input typed in. Please, try again. %v \n", err)
     }
 
-    for n in 0..<len(tokenized) {
-        fmt.printf("%v, value: %v\n", tokenized[n].lexeme, tokenized[n].value)
-    }
+    //for n in 0..<len(tokenized) {
+    //    fmt.printf("%v, value: %v\n", tokenized[n].lexeme, tokenized[n].value)
+    //}
 
     bi_exists, _ := get_built_in(tokenized[0].value)
 
@@ -33,43 +33,6 @@ parse_input :: proc(input: string) -> (result: bool, command: string) {
     }
 
     return false, ""
-}
-
-resolve_arguments :: proc(arguments: []string, arguments_to_return: ^[dynamic]string) -> [dynamic]string {
-
-    start_complex_arg := false 
-    builder: strings.Builder
-    strings.builder_init(&builder, context.temp_allocator)
-
-    for n in 0..<len(arguments) {
-        argument := arguments[n]
-        len_argument := len(argument)
-
-        if argument[0] == '"' && !start_complex_arg {
-            start_complex_arg = true
-            strings.write_string(&builder, argument[1:len_argument])
-            strings.write_byte(&builder, ' ')
-        } else if start_complex_arg {
-            
-            if argument[len_argument - 1] == '"' {
-                strings.write_string(&builder, argument[0:len_argument-1])
-                strings.write_byte(&builder, ' ')
-
-                start_complex_arg = false
-                complex_arg := strings.to_string(builder)
-                strings.builder_destroy(&builder)
-                append(&arguments_to_return^, complex_arg)
-            } else {
-                strings.write_string(&builder, argument)
-                strings.write_byte(&builder, ' ')
-            }
-        } else {
-            append(&arguments_to_return^, argument)
-            //strings.builder_destroy(&builder) // not so sure about this to be fair
-        }
-    }
-
-    return arguments_to_return^
 }
 
 tokenize_input :: proc(input: string) -> (result: [dynamic]Token, error: LexemeError) {
