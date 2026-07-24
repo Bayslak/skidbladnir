@@ -55,7 +55,8 @@ split_on_lexeme :: proc(tokens: ^[dynamic]Token) -> ([dynamic][dynamic]string, [
 run_lexeme :: proc(commands: [dynamic][dynamic]string, lexem: Lexeme) -> (result: bool, command: string) {
     switch lexem {
         case .PIPE: return run_pipeline(commands[0], commands[1])
-        case .GREATER: return run_greater(commands[0], commands[1])
+        case .GREATER: return run_on_file(commands[0], commands[1], lexem)
+        case .APPEND: return run_on_file(commands[0], commands[1], lexem)
         case .NONE:
         case .WORD:
         case .LESS: {
@@ -139,8 +140,15 @@ run_pipeline :: proc(arguments_one: [dynamic]string, arguments_two: [dynamic]str
     return true, arguments_one[0]
 }
 
-run_greater :: proc(arguments_one: [dynamic]string, file_path: [dynamic]string) -> (result: bool, command: string) {
-    opened_file, open_err := os.open(file_path[0], os.O_TRUNC | os.O_CREATE | os.O_WRONLY)
+run_on_file :: proc(arguments_one: [dynamic]string, file_path: [dynamic]string, lexeme: Lexeme) -> (result: bool, command: string) {
+    opened_file: ^os.File
+    open_err: os.Error
+
+    if lexeme == Lexeme.GREATER {
+        opened_file, open_err = os.open(file_path[0], os.O_TRUNC | os.O_CREATE | os.O_WRONLY)
+    } else if lexeme == Lexeme.APPEND {
+        opened_file, open_err = os.open(file_path[0], os.O_APPEND | os.O_CREATE | os.O_WRONLY)
+    }
 
     if open_err != nil {
         fmt.printf("There was a problem opening %v; %v", file_path[0], open_err)

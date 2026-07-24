@@ -39,10 +39,17 @@ tokenize_input :: proc(input: string) -> (result: [dynamic]Token, error: LexemeE
     
     tokenized_arguments: [dynamic]Token
     is_complex_arg := false 
+    skip_next := false
     builder: strings.Builder
     strings.builder_init(&builder, context.temp_allocator)
 
     for n in 0..<len(input) {
+
+        if skip_next {
+            skip_next = false
+            continue
+        }
+
         char := input[n]
 
         if is_complex_arg {
@@ -68,9 +75,23 @@ tokenize_input :: proc(input: string) -> (result: [dynamic]Token, error: LexemeE
 
         is_lexeme := lexeme_parser(char) or_return
         if is_lexeme != Lexeme.WORD {
-            token := Token {
-                lexeme = is_lexeme,
+
+            token: Token
+
+            if is_append_lexeme(char, input[n+1]) {
+                token = Token {
+                    lexeme = Lexeme.APPEND
+                }
+
+                skip_next = true
             }
+            else
+            {
+                token = Token {
+                    lexeme = is_lexeme,
+                }
+            }
+
             append(&tokenized_arguments, token)
             strings.builder_reset(&builder)
             continue
