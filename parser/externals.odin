@@ -23,13 +23,6 @@ execute_command :: proc(tokens: ^[dynamic]Token) -> (result: bool, command: stri
         }
     }
 
-    if len(commands) == 1 {
-        
-    }
-    else {
-        
-    }
-
     return true, commands[0][0]
 }
 
