@@ -173,21 +173,6 @@ split_on_lexeme :: proc(tokens: ^[dynamic]Token) -> ([dynamic]Command, [dynamic]
     return commands, lexems
 }
 
-run_lexeme :: proc(commands: [dynamic]Command, lexem: Lexeme) -> (result: bool, command: string) {
-    switch lexem {
-        case .PIPE: return run_pipeline(commands[0], commands[1])
-        case .GREATER: return run_on_file(commands[0], commands[1], lexem)
-        case .APPEND: return run_on_file(commands[0], commands[1], lexem)
-        case .NONE:
-        case .WORD:
-        case .LESS: {
-            fmt.println("Lexem not supported yet: ", lexem)
-        }
-    }
-
-    return false, commands[0].args[0]
-}
-
 get_process_desc :: proc(command: Command, w_in: ^os.File = os.stdin, w_out: ^os.File = os.stdout) -> os.Process_Desc {
     return os.Process_Desc {
             command = command.args[:],
@@ -198,7 +183,6 @@ get_process_desc :: proc(command: Command, w_in: ^os.File = os.stdin, w_out: ^os
 }
 
 run_single :: proc(command: Command, w_in: ^os.File = os.stdin, w_out: ^os.File = os.stdout) -> (result: bool, commands: string) {
-
     out_to_use := w_out
 
     if command.output_file != "" {
@@ -232,92 +216,4 @@ run_single :: proc(command: Command, w_in: ^os.File = os.stdin, w_out: ^os.File 
     }
 
     return true, command.args[0]
-}
-
-run_pipeline :: proc(arguments_one: Command, arguments_two: Command) -> (result: bool, command: string) {
-    read_end, write_end, pipe_err := os.pipe()
-
-    if pipe_err != nil {
-            fmt.printf("There was a problem creating a pipe %v\n", pipe_err)
-            return false, arguments_one.args[0]
-        }
-
-    p1, p1_start_err := os.process_start(os.Process_Desc{
-        command = arguments_one.args[:],
-        stdin = os.stdin,
-        stdout = write_end,
-        stderr = os.stderr
-    })
-
-    p2, p2_start_err := os.process_start(os.Process_Desc{
-        command = arguments_two.args[:],
-        stdin = read_end,
-        stdout = os.stdout,
-        stderr = os.stderr
-    })
-
-    if p1_start_err != nil {
-        fmt.printf("There was a problem starting the process %v: %v\n", arguments_one.args[0], p1_start_err)
-        return false, arguments_one.args[0]
-    }
-
-    if p2_start_err != nil {
-        fmt.printf("There was a problem starting the process %v: %v\n", arguments_two.args[0], p2_start_err)
-        return false, arguments_two.args[0]
-    }
-
-    os.close(write_end)
-    os.close(read_end)
-
-    _, p1_wait_err := os.process_wait(p1)
-    if p1_wait_err != nil {
-        fmt.printf("There was a problem waiting the process %v: %v\n", arguments_one.args[0], p1_wait_err)
-        return false, arguments_one.args[0]
-    }
-
-    _, p2_wait_err := os.process_wait(p2)
-    if p2_wait_err != nil {
-        fmt.printf("There was a problem waiting the process %v: %v\n", arguments_two.args[0], p2_wait_err)
-        return false, arguments_two.args[0]
-    }
-
-    return true, arguments_one.args[0]
-}
-
-run_on_file :: proc(arguments_one: Command, file_path: Command, lexeme: Lexeme) -> (result: bool, command: string) {
-    opened_file: ^os.File
-    open_err: os.Error
-
-    if lexeme == Lexeme.GREATER {
-        opened_file, open_err = os.open(file_path.args[0], os.O_TRUNC | os.O_CREATE | os.O_WRONLY)
-    } else if lexeme == Lexeme.APPEND {
-        opened_file, open_err = os.open(file_path.args[0], os.O_APPEND | os.O_CREATE | os.O_WRONLY)
-    }
-
-    if open_err != nil {
-        fmt.printf("There was a problem opening %v; %v", file_path.args[0], open_err)
-        return false, arguments_one.args[0]
-    }
-
-    p, p_err := os.process_start(os.Process_Desc {
-      command = arguments_one.args[:],
-      stdin = os.stdin,
-      stdout = opened_file,
-      stderr = os.stderr
-    })
-
-    if p_err != nil {
-        fmt.printf("There was a problem; %v",  p_err)
-        return false, arguments_one.args[0]
-    }
-
-    defer os.close(opened_file)
-
-    _, p_wait_err := os.process_wait(p)
-    if p_wait_err != nil {
-        fmt.printf("There was a problem waiting the process %v: %v\n", arguments_one.args[0], p_wait_err)
-        return false, arguments_one.args[0]
-    }
-
-    return true, arguments_one.args[0]
 }
