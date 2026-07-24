@@ -12,11 +12,11 @@ execute_command :: proc(tokens: ^[dynamic]Token) -> (result: bool, command: stri
     //}
 
     // here we should check how many command there are and what they are divided by i guess
-    commands := split_on_pipe(tokens)
+    commands, lexems := split_on_lexeme(tokens)
 
     switch len(commands) {
         case 1: return run_single(commands[0])
-        case 2: return run_pipeline(commands[0], commands[1])
+        case 2: return run_lexeme(commands, lexems[0])
         case: {
             fmt.println("More then 2 commands are not yet supported.")
             return false, commands[0][0]
@@ -26,15 +26,17 @@ execute_command :: proc(tokens: ^[dynamic]Token) -> (result: bool, command: stri
     return true, commands[0][0]
 }
 
-split_on_pipe :: proc(tokens: ^[dynamic]Token) -> [dynamic][dynamic]string {
+split_on_lexeme :: proc(tokens: ^[dynamic]Token) -> ([dynamic][dynamic]string, [dynamic]Lexeme) {
     commands: [dynamic][dynamic]string
+    lexems: [dynamic]Lexeme
     support_command_list := make([dynamic]string, context.temp_allocator)
 
     for n in 0..<len(tokens) {
         //fmt.printf("%v - %v\n", tokens[n].lexeme, tokens[n].value)
 
-        if tokens[n].lexeme == Lexeme.PIPE {
+        if tokens[n].lexeme != Lexeme.WORD {
             append(&commands, support_command_list)
+            append(&lexems, tokens[n].lexeme)
             support_command_list = make([dynamic]string, context.temp_allocator)
         }
         else if n == len(tokens) - 1 {
@@ -47,7 +49,21 @@ split_on_pipe :: proc(tokens: ^[dynamic]Token) -> [dynamic][dynamic]string {
         }
     }
 
-    return commands
+    return commands, lexems
+}
+
+run_lexeme :: proc(commands: [dynamic][dynamic]string, lexem: Lexeme) -> (result: bool, command: string) {
+    switch lexem {
+        case .PIPE: return run_pipeline(commands[0], commands[1])
+        case .GREATER: return run_greater(commands[0], commands[1])
+        case .NONE:
+        case .WORD:
+        case .LESS: {
+            fmt.println("Lexem not supported yet: ", lexem)
+        }
+    }
+
+    return false, commands[0][0]
 }
 
 run_single :: proc(arguments: [dynamic]string) -> (result: bool, commands: string) {
@@ -118,6 +134,37 @@ run_pipeline :: proc(arguments_one: [dynamic]string, arguments_two: [dynamic]str
     if p2_wait_err != nil {
         fmt.printf("There was a problem waiting the process %v: %v\n", arguments_two[0], p2_wait_err)
         return false, arguments_two[0]
+    }
+
+    return true, arguments_one[0]
+}
+
+run_greater :: proc(arguments_one: [dynamic]string, file_path: [dynamic]string) -> (result: bool, command: string) {
+    opened_file, open_err := os.open(file_path[0], os.O_TRUNC | os.O_CREATE | os.O_WRONLY)
+
+    if open_err != nil {
+        fmt.printf("There was a problem opening %v; %v", file_path[0], open_err)
+        return false, arguments_one[0]
+    }
+
+    p, p_err := os.process_start(os.Process_Desc {
+      command = arguments_one[:],
+      stdin = os.stdin,
+      stdout = opened_file,
+      stderr = os.stderr
+    })
+
+    if p_err != nil {
+        fmt.printf("There was a problem; %v",  p_err)
+        return false, arguments_one[0]
+    }
+
+    defer os.close(opened_file)
+
+    _, p_wait_err := os.process_wait(p)
+    if p_wait_err != nil {
+        fmt.printf("There was a problem waiting the process %v: %v\n", arguments_one[0], p_wait_err)
+        return false, arguments_one[0]
     }
 
     return true, arguments_one[0]
