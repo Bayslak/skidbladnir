@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="resources/skidbladnir_logo.png" alt="skidbladnir" width="420">
+  <img src="assets/skidbladnir_logo.png" alt="skidbladnir" width="256">
 </p>
 
 # skidbladnir
