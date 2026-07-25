@@ -2,8 +2,6 @@
   <img src="resources/skidbladnir_logo.png" alt="skidbladnir" width="256">
 </p>
 
-# skidbladnir
-
 A minimal Unix-style shell written in [Odin](https://odin-lang.org/), built as a
 project to learn the language and, maybe, to end up genuinely useful day to day.
 
