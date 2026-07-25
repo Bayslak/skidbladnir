@@ -14,10 +14,10 @@ import ter "./ter"
 
 
 main :: proc() {
-
     // setups
     parser.setup_built_ins()
     input.setup_keystrokes()
+    input.CURRENT_HISTORY_INDEX = -1
 
     original, raw := ter.prepare_terminal()
 
@@ -31,7 +31,7 @@ main :: proc() {
     strings.builder_init(&builder, context.temp_allocator)
 
     for working {
-        u_inp := input.read_user_keystrokes(&builder)
+        u_inp := input.read_user_keystrokes(&builder, &history)
 
         if u_inp == "" {
             continue
@@ -45,12 +45,11 @@ main :: proc() {
         result, cmd := parser.parse_input(u_inp, &history)
             
         if cmd != "munin" {
-            if result {
-                // we do not specify the context.temp_allocator so that
-                // the history can live in the heap and not get freed
-                cloned_user_input := strings.clone(u_inp)
-                append(&history, cloned_user_input)
-            }
+            // we do not specify the context.temp_allocator so that
+            // the history can live in the heap and not get freed
+            cloned_user_input := strings.clone(u_inp)
+            append(&history, cloned_user_input)
+            input.MAX_HISTORY_INDEX = len(history) - 1
         }
             
         if cmd == "exit" {
