@@ -50,6 +50,7 @@ main :: proc() {
             cloned_user_input := strings.clone(u_inp)
             append(&history, cloned_user_input)
             input.MAX_HISTORY_INDEX = len(history) - 1
+            input.CURRENT_HISTORY_INDEX = input.MAX_HISTORY_INDEX + 1
         }
             
         if cmd == "exit" {

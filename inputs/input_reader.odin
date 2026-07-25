@@ -17,7 +17,7 @@ setup_keystrokes :: proc() {
     keystrokes_map[27] = KEYSTROKES.ESCAPE
 }
 
-ESCAPECMD :: enum { ARROW_UP, ARROW_DOWN, NOT_MAPPED }
+ESCAPECMD :: enum { ESCAPE, ARROW_UP, ARROW_DOWN, NOT_MAPPED }
 
 CURRENT_HISTORY_INDEX: int
 MAX_HISTORY_INDEX: int
@@ -68,7 +68,11 @@ read_user_keystrokes :: proc(builder: ^strings.Builder, history: ^[dynamic]strin
 
                 switch cmd {
                     case .ARROW_UP, .ARROW_DOWN:
-                        handle_arrow(cmd, builder, history)
+                        if len(history) > 0 {
+                            handle_arrow(cmd, builder, history)
+                        }
+                    case .ESCAPE:
+                        clear_input(builder)
                     case .NOT_MAPPED:
                 }
 
@@ -102,6 +106,10 @@ handle_escape :: proc() -> ESCAPECMD {
         }
     }
 
+    if char_one == 27 {
+        return ESCAPECMD.ESCAPE
+    }
+
     return ESCAPECMD.NOT_MAPPED
 }
 
@@ -109,9 +117,9 @@ handle_arrow :: proc(cmd: ESCAPECMD, builder: ^strings.Builder, history: ^[dynam
     new_ch_idx := CURRENT_HISTORY_INDEX
     
     if cmd == ESCAPECMD.ARROW_UP {
-        new_ch_idx += 1
-    } else if cmd == ESCAPECMD.ARROW_DOWN {
         new_ch_idx -= 1
+    } else if cmd == ESCAPECMD.ARROW_DOWN {
+        new_ch_idx += 1
     } else {
         //not implemented
         return
