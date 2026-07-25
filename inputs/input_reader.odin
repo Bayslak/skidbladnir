@@ -11,6 +11,7 @@ keystrokes_map: map[u8]KEYSTROKES
 setup_keystrokes :: proc() {
     keystrokes_map = make(map[u8]KEYSTROKES)
     keystrokes_map['\b'] = KEYSTROKES.BACKSPACE
+    keystrokes_map['\x7f'] = KEYSTROKES.BACKSPACE
     keystrokes_map['\r'] = KEYSTROKES.ENTER
     keystrokes_map['\n'] = KEYSTROKES.ENTER
 }
@@ -47,7 +48,10 @@ read_user_keystrokes :: proc(builder: ^strings.Builder) -> string {
     if is_special {
         #partial switch kind {
             case .BACKSPACE:
-                fmt.printf("\b")
+                if strings.builder_len(builder^) > 0 {
+                    fmt.printf("\b \b")
+                    _ = pop(&builder.buf)
+                }
                 return ""
             case .ENTER:
                 result := strings.clone(strings.to_string(builder^), context.temp_allocator)
