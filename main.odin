@@ -4,50 +4,66 @@ import "core:fmt"
 import "core:os"
 import "core:strings"
 import "core:bufio"
+import posix "core:sys/posix"
 
 import input "./inputs"
 import parser "./parser"
 import display "./display"
 import tracker "./memory"
+import ter "./ter"
 
 
 main :: proc() {
 
     // setups
     parser.setup_built_ins()
+    input.setup_keystrokes()
+
+    original, raw := ter.prepare_terminal()
 
     track := tracker.start_tracking()
 
     working := true
     history: [dynamic]string
 
-    for working {
-        display.display_wd()
+    display.display_wd()
+    builder: strings.Builder
+    strings.builder_init(&builder, context.temp_allocator)
 
-        user_input, valid := input.read_user_input()
-        
-        if !valid {
-            break
+    for working {
+        u_inp := input.read_user_keystrokes(&builder)
+
+        if u_inp == "" {
+            continue
         }
-        
-        result, cmd := parser.parse_input(user_input, &history)
-        
+
+        fmt.println()
+        ter.go_to_original_mode()
+
+        trimmed := input.trim_input(&u_inp)
+            
+        result, cmd := parser.parse_input(u_inp, &history)
+            
         if cmd != "munin" {
             if result {
                 // we do not specify the context.temp_allocator so that
                 // the history can live in the heap and not get freed
-                cloned_user_input := strings.clone(user_input)
+                cloned_user_input := strings.clone(u_inp)
                 append(&history, cloned_user_input)
             }
         }
-        
+            
         if cmd == "exit" {
             working = false;
             return;
         }
 
-        tracker.check_memory_usage(&track)
-
         free_all(context.temp_allocator)
+        strings.builder_reset(&builder)
+        ter.go_to_raw_mode()
+        display.display_wd()
     }
+    
+    tracker.check_memory_usage(&track)
+    ter.go_to_original_mode()
 }

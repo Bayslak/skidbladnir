@@ -5,6 +5,16 @@ import "core:os"
 import "core:strings"
 import "core:strconv"
 
+KEYSTROKES :: enum { BACKSPACE, ENTER, CHARACTER } 
+keystrokes_map: map[u8]KEYSTROKES
+
+setup_keystrokes :: proc() {
+    keystrokes_map = make(map[u8]KEYSTROKES)
+    keystrokes_map['\b'] = KEYSTROKES.BACKSPACE
+    keystrokes_map['\r'] = KEYSTROKES.ENTER
+    keystrokes_map['\n'] = KEYSTROKES.ENTER
+}
+
 read_user_input :: proc() -> (string, bool) {
     buf: [256]byte
     n, err := os.read(os.stdin, buf[:])
@@ -19,4 +29,34 @@ read_user_input :: proc() -> (string, bool) {
     trimmed := strings.clone(strings.trim_right(input, "\n\r"), context.temp_allocator) // again, I should trim by this freaking new line thing
 
     return trimmed, true
+}
+
+trim_input :: proc(input: ^string) -> string {
+    trimmed := strings.clone(strings.trim_right(input^, "\n\r"), context.temp_allocator)
+    return trimmed
+}
+
+read_user_keystrokes :: proc(builder: ^strings.Builder) -> string {
+    buf: [1]byte
+    n, _ := os.read(os.stdin, buf[:])
+
+    char := u8(buf[0])
+
+    kind, is_special := keystrokes_map[char]
+
+    if is_special {
+        #partial switch kind {
+            case .BACKSPACE:
+                fmt.printf("\b")
+                return ""
+            case .ENTER:
+                result := strings.clone(strings.to_string(builder^), context.temp_allocator)
+                return result
+            }
+    } else {
+        strings.write_byte(builder, char)
+        fmt.printf("%c", char)
+    }
+
+    return ""
 }
