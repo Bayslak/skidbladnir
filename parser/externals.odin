@@ -6,6 +6,7 @@ import "core:strings"
 
 Command :: struct {
     args: [dynamic]string,
+    input_file: string,
     output_file: string,
     append: bool
 }
@@ -57,6 +58,10 @@ execute_command :: proc(tokens: ^[dynamic]Token) -> (result: bool, command: stri
                     }
 
                     p_desc = get_process_desc(commands[n], pipes[n - 1].s_in, opened_file)
+                }
+                else if commands[n].input_file != "" {
+                    opened_file, _ := os.open(commands[n].input_file, os.O_RDONLY)
+                    p_desc = get_process_desc(commands[n], opened_file)
                 }
                 else {
                     p_desc = get_process_desc(commands[n], pipes[n - 1].s_in)
@@ -143,6 +148,17 @@ split_on_lexeme :: proc(tokens: ^[dynamic]Token) -> ([dynamic]Command, [dynamic]
             append(&lexems, tokens[i].lexeme)
             support_command_list = make([dynamic]string, context.temp_allocator)
         }
+        else if current_lexeme == Lexeme.LESS {
+            command := Command {
+                args = support_command_list,
+                input_file = tokens[i + 1].value
+            }
+
+            append(&commands, command)
+            append(&lexems, tokens[i].lexeme)
+            support_command_list = make([dynamic]string, context.temp_allocator)
+            i += 1
+        }
         else if current_lexeme == Lexeme.GREATER || current_lexeme == Lexeme.APPEND {
             command := Command {
                 args = support_command_list,
@@ -184,6 +200,7 @@ get_process_desc :: proc(command: Command, w_in: ^os.File = os.stdin, w_out: ^os
 
 run_single :: proc(command: Command, w_in: ^os.File = os.stdin, w_out: ^os.File = os.stdout) -> (result: bool, commands: string) {
     out_to_use := w_out
+    in_to_use := w_in
 
     if command.output_file != "" {
         opened_file: ^os.File
@@ -196,9 +213,14 @@ run_single :: proc(command: Command, w_in: ^os.File = os.stdin, w_out: ^os.File 
         out_to_use = opened_file
     }
 
+    if command.input_file != "" {
+        opened_file, _ := os.open(command.input_file, os.O_RDONLY)
+        in_to_use = opened_file
+    }
+
     process, start_err := os.process_start(os.Process_Desc{
             command = command.args[:],
-            stdin = w_in,
+            stdin = in_to_use,
             stdout = out_to_use,
             stderr = os.stderr
         })
