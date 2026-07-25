@@ -24,7 +24,7 @@ execute_command :: proc(tokens: ^[dynamic]Token) -> (result: bool, command: stri
     //}
 
     // here we should check how many command there are and what they are divided by i guess
-    commands, lexems := split_on_lexeme(tokens)
+    commands := split_on_lexeme(tokens)
     pipes := instantiate_support_pipes(commands)
     
     if len(commands) > 1 && len(pipes) != len(commands) - 1 {
@@ -130,9 +130,11 @@ close_support_pipes :: proc(pipes: ^[dynamic]SupportPipe) {
     }
 }
 
-split_on_lexeme :: proc(tokens: ^[dynamic]Token) -> ([dynamic]Command, [dynamic]Lexeme) {
+split_on_lexeme :: proc(tokens: ^[dynamic]Token) -> [dynamic]Command {
     commands: [dynamic]Command
-    lexems: [dynamic]Lexeme
+    command_under_construction := Command {
+        args = make([dynamic]string, context.temp_allocator)
+    }
     support_command_list := make([dynamic]string, context.temp_allocator)
 
     for i := 0; i < len(tokens); i += 1 {
@@ -140,53 +142,43 @@ split_on_lexeme :: proc(tokens: ^[dynamic]Token) -> ([dynamic]Command, [dynamic]
         current_lexeme := tokens[i].lexeme
 
         if current_lexeme == Lexeme.PIPE {
-            command := Command {
-                args = support_command_list
-            }
-
-            append(&commands, command)
-            append(&lexems, tokens[i].lexeme)
-            support_command_list = make([dynamic]string, context.temp_allocator)
+            append(&commands, command_under_construction)
+            command_under_construction = init_command()
         }
         else if current_lexeme == Lexeme.LESS {
-            command := Command {
-                args = support_command_list,
-                input_file = tokens[i + 1].value
-            }
-
-            append(&commands, command)
-            append(&lexems, tokens[i].lexeme)
-            support_command_list = make([dynamic]string, context.temp_allocator)
+            command_under_construction.input_file = tokens[i + 1].value
             i += 1
         }
         else if current_lexeme == Lexeme.GREATER || current_lexeme == Lexeme.APPEND {
-            command := Command {
-                args = support_command_list,
-                output_file = tokens[i + 1].value,
-                append = current_lexeme == Lexeme.APPEND
-            }
-
-            append(&commands, command)
-            append(&lexems, tokens[i].lexeme)
-            support_command_list = make([dynamic]string, context.temp_allocator)
+            
+            command_under_construction.output_file = tokens[i + 1].value
+            command_under_construction.append = current_lexeme == Lexeme.APPEND
             i += 1
         }
         else if i == len(tokens) - 1 {
-            append(&support_command_list, tokens[i].value)
-
-            command := Command {
-                args = support_command_list
-            }
-
-            append(&commands, command)
+            append(&command_under_construction.args, tokens[i].value)
+            append(&commands, command_under_construction)
+            command_under_construction = init_command()
         }
-        else
-        {
-            append(&support_command_list, tokens[i].value)
+        else {
+            append(&command_under_construction.args, tokens[i].value)
         }
     }
 
-    return commands, lexems
+    if len(command_under_construction.args) > 0 {
+        append(&commands, command_under_construction)
+    }
+
+    return commands
+}
+
+init_command :: proc() -> Command {
+    return Command {
+        args = make([dynamic]string, context.temp_allocator),
+        input_file = "",
+        output_file = "",
+        append = false
+    }
 }
 
 get_process_desc :: proc(command: Command, w_in: ^os.File = os.stdin, w_out: ^os.File = os.stdout) -> os.Process_Desc {
