@@ -16,6 +16,7 @@ import ter "./ter"
 main :: proc() {
     // setups
     parser.setup_built_ins()
+    input.CONTROLLER = input.init_input_controller()
     input.setup_keystrokes()
     input.CURRENT_HISTORY_INDEX = -1
 
@@ -27,11 +28,9 @@ main :: proc() {
     history: [dynamic]string
 
     display.display_wd()
-    builder: strings.Builder
-    strings.builder_init(&builder, context.temp_allocator)
-
+    
     for working {
-        u_inp := input.read_user_keystrokes(&builder, &history)
+        u_inp := input.read_user_keystrokes(&history)
 
         if u_inp == "" {
             continue
@@ -59,11 +58,12 @@ main :: proc() {
         }
 
         free_all(context.temp_allocator)
-        strings.builder_reset(&builder)
+
+        input.clear_input()
         ter.go_to_raw_mode()
+        tracker.check_memory_usage(&track)
         display.display_wd()
     }
     
-    tracker.check_memory_usage(&track)
     ter.go_to_original_mode()
 }

@@ -17,25 +17,22 @@ setup_keystrokes :: proc() {
     keystrokes_map[27] = KEYSTROKES.ESCAPE
 }
 
-ESCAPECMD :: enum { ESCAPE, ARROW_UP, ARROW_DOWN, NOT_MAPPED }
+ESCAPECMD :: enum { ESCAPE, ARROW_UP, ARROW_DOWN, ARROW_LEFT, ARROW_RIGHT, NOT_MAPPED }
+
+Controller :: struct {
+    pos: int,
+    input: [dynamic]u8
+}
+CONTROLLER: Controller
 
 CURRENT_HISTORY_INDEX: int
 MAX_HISTORY_INDEX: int
 
-read_user_input :: proc() -> (string, bool) {
-    buf: [256]byte
-    n, err := os.read(os.stdin, buf[:])
-
-    if err != nil {
-        fmt.eprintln("Error reading: ", err)
-        return "", false
+init_input_controller :: proc() -> Controller {
+    return Controller {
+        pos = 0,
+        input = make([dynamic]u8, context.temp_allocator)
     }
-
-    // now i just need to recover all of the user input
-    input := string(buf[:n]) // n is the number of byte written in the buffer by the read method
-    trimmed := strings.clone(strings.trim_right(input, "\n\r"), context.temp_allocator) // again, I should trim by this freaking new line thing
-
-    return trimmed, true
 }
 
 trim_input :: proc(input: ^string) -> string {
@@ -43,7 +40,7 @@ trim_input :: proc(input: ^string) -> string {
     return trimmed
 }
 
-read_user_keystrokes :: proc(builder: ^strings.Builder, history: ^[dynamic]string) -> string {
+read_user_keystrokes :: proc(history: ^[dynamic]string) -> string {
     buf: [1]byte
     n, _ := os.read(os.stdin, buf[:])
 
@@ -55,13 +52,22 @@ read_user_keystrokes :: proc(builder: ^strings.Builder, history: ^[dynamic]strin
     if is_special {
         #partial switch kind {
             case .BACKSPACE:
-                if strings.builder_len(builder^) > 0 {
-                    fmt.printf("\b \b")
-                    _ = pop(&builder.buf)
+                if len(CONTROLLER.input) > 0 && CONTROLLER.pos > 0 {
+                    CONTROLLER.pos -= 1
+                    ordered_remove(&CONTROLLER.input, CONTROLLER.pos)
+                    fmt.printf("\b")
+                    repaint_input()
                 }
                 return ""
             case .ENTER:
-                result := strings.clone(strings.to_string(builder^), context.temp_allocator)
+                builder: strings.Builder
+                strings.builder_init(&builder, context.temp_allocator)
+
+                for n in 0..<len(CONTROLLER.input) {
+                    strings.write_byte(&builder, CONTROLLER.input[n])
+                }
+
+                result := strings.clone(strings.to_string(builder), context.temp_allocator)
                 return result
             case .ESCAPE:
                 cmd := handle_escape()
@@ -69,18 +75,22 @@ read_user_keystrokes :: proc(builder: ^strings.Builder, history: ^[dynamic]strin
                 switch cmd {
                     case .ARROW_UP, .ARROW_DOWN:
                         if len(history) > 0 {
-                            handle_arrow(cmd, builder, history)
+                            handle_ud_arrow(cmd, history)
                         }
+                    case .ARROW_LEFT, .ARROW_RIGHT:
+                            handle_lr_arrow(cmd)
                     case .ESCAPE:
-                        clear_input(builder)
+                        clear_input()
                     case .NOT_MAPPED:
                 }
 
                 return ""
             }
     } else {
-        strings.write_byte(builder, char)
         fmt.printf("%c", char)
+
+        //append(&CONTROLLER.input, char)
+        add_char_to_input(&char)
     }
 
     return ""
@@ -101,6 +111,10 @@ handle_escape :: proc() -> ESCAPECMD {
                 return ESCAPECMD.ARROW_UP
             case 66:
                 return ESCAPECMD.ARROW_DOWN
+            case 67:
+                return ESCAPECMD.ARROW_RIGHT
+            case 68:
+                return ESCAPECMD.ARROW_LEFT
             case:
                 return ESCAPECMD.NOT_MAPPED
         }
@@ -113,7 +127,7 @@ handle_escape :: proc() -> ESCAPECMD {
     return ESCAPECMD.NOT_MAPPED
 }
 
-handle_arrow :: proc(cmd: ESCAPECMD, builder: ^strings.Builder, history: ^[dynamic]string) {
+handle_ud_arrow :: proc(cmd: ESCAPECMD, history: ^[dynamic]string) {
     new_ch_idx := CURRENT_HISTORY_INDEX
     
     if cmd == ESCAPECMD.ARROW_UP {
@@ -133,31 +147,74 @@ handle_arrow :: proc(cmd: ESCAPECMD, builder: ^strings.Builder, history: ^[dynam
         CURRENT_HISTORY_INDEX = new_ch_idx
     }
 
-    clear_input(builder)
-    populate_at_index(builder, history)
+    clear_input()
+    populate_at_index(history)
 }
 
-clear_input :: proc(builder: ^strings.Builder) {
-    if strings.builder_len(builder^) == 0 {
+handle_lr_arrow :: proc(cmd: ESCAPECMD) {
+    #partial switch cmd {
+        case .ARROW_LEFT:
+            if CONTROLLER.pos > 0 {
+                fmt.printf("\b")
+                CONTROLLER.pos -= 1
+            }
+        case .ARROW_RIGHT:
+            if CONTROLLER.pos < len(CONTROLLER.input) {
+                fmt.printf("\x1b[C")
+                CONTROLLER.pos += 1
+            }
+    }
+}
+
+clear_input :: proc() {
+    if len(CONTROLLER.input) == 0 {
         return
     }
 
-    sentence := strings.clone(strings.to_string(builder^), context.temp_allocator)
-
-    for n in 0..<len(sentence) {
+    for n in 0..<len(CONTROLLER.input) {
         fmt.printf("\b \b")
     }
 
-    strings.builder_reset(builder)
+    clear(&CONTROLLER.input)
+    CONTROLLER.pos = 0
+
     return
 }
 
-populate_at_index :: proc(builder: ^strings.Builder, history: ^[dynamic]string, index: int = CURRENT_HISTORY_INDEX) {
+populate_at_index :: proc(history: ^[dynamic]string, index: int = CURRENT_HISTORY_INDEX) {
     cmd_from_history := history[index]
 
     for n in 0..<len(cmd_from_history) {
         char := cmd_from_history[n]
         fmt.printf("%c", char)
-        strings.write_byte(builder, char)
+
+        append(&CONTROLLER.input, char)
+    }
+
+    CONTROLLER.pos = len(CONTROLLER.input)
+}
+
+add_char_to_input :: proc(char: ^u8) {
+    inject_at(&CONTROLLER.input, CONTROLLER.pos, char^)
+    CONTROLLER.pos += 1
+
+    repaint_input()
+}
+
+repaint_input :: proc() {
+    tail_len := len(CONTROLLER.input) - CONTROLLER.pos
+
+    // reprint everything from the cursor to the end
+    for n in CONTROLLER.pos..<len(CONTROLLER.input) {
+        fmt.printf("%c", CONTROLLER.input[n])
+    }
+
+    // print one space to erase a leftover char (from a deletion)
+    // on insertion this just paints past the end harmlessly
+    fmt.printf(" ")
+
+    // step the cursor back over the tail AND that space, landing at pos
+    for i := 0; i < tail_len + 1; i += 1 {
+        fmt.printf("\b")
     }
 }
