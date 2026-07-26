@@ -15,6 +15,7 @@ import ter "./ter"
 
 main :: proc() {
     // setups
+    display.set_blinking_cursor(true)
     parser.setup_built_ins()
     input.CONTROLLER = input.init_input_controller()
     input.setup_keystrokes()
@@ -53,8 +54,8 @@ main :: proc() {
         }
             
         if cmd == "exit" {
-            working = false;
-            return;
+            working = false
+            continue
         }
 
         free_all(context.temp_allocator)
@@ -65,5 +66,6 @@ main :: proc() {
         display.display_wd()
     }
     
+    display.set_blinking_cursor(false)
     ter.go_to_original_mode()
 }
