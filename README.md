@@ -8,8 +8,7 @@ Given my love for Norse mithology and viking themes, the name comes from Skíðb
 
 ### Features
 - Runs external programs and a set of built-in commands.
-- A hand-written lexer that tokenizes input, with quoted arguments
-  (`echo "bay is learning"` is one argument).
+- A hand-written lexer that tokenizes input
 - **Pipelines** of any length: `cat file | grep foo | wc -l`.
 - **Redirection**: `>`, `>>` (append), and `<` (input), including combinations
   like `grep TODO < in.txt > out.txt`.
@@ -18,6 +17,7 @@ Given my love for Norse mithology and viking themes, the name comes from Skíðb
   - backspace
   - command **history** (up/down arrows)
   - navigation in the input (left/right arrows)
+- Tilde and environment variable expansion
 
 ### Built-in commands
 

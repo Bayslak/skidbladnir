@@ -9,6 +9,7 @@ parse_input :: proc(input: string, history: ^[dynamic]string) -> (result: bool, 
  
     // here maybe we tokenize?
     tokenized, err := tokenize_input(input)
+    expanded_tokens := handle_expansion(&tokenized)
 
     if err != nil {
         fmt.printf("There were some problems with the input typed in. Please, try again. %v \n", err)
@@ -118,4 +119,58 @@ flush_word :: proc(builder: ^strings.Builder, tokens: ^[dynamic]Token) {
     }
     append(tokens, token)
     strings.builder_reset(builder)
+}
+
+handle_expansion :: proc(tokens: ^[dynamic]Token) -> [dynamic]Token {
+    result: [dynamic]Token
+    
+    for n in 0..<len(tokens) {
+        if tokens[n].lexeme == Lexeme.WORD {
+            tokens[n].value = expand_word(&tokens[n].value)
+        }
+
+        append(&result, tokens[n])
+    }
+
+    return result
+}
+
+expand_word :: proc(word: ^string) -> string {
+    result: string
+
+    tilde_starts := strings.has_prefix(word^, "~")
+    dollar_starts := strings.has_prefix(word^, "$")
+    if tilde_starts || dollar_starts {
+
+        replace: string
+        found: bool
+
+        if tilde_starts {
+            home_env, found_home := os.lookup_env_alloc("HOME", context.temp_allocator)
+            replace = home_env
+            found = found_home
+        }
+
+        if dollar_starts {
+            var_env, found_dollar := os.lookup_env_alloc(word^[1:], context.temp_allocator)
+            replace = var_env
+            found = found_dollar
+        }
+
+        if !found {
+            fmt.printf("It was impossible to find the env variable for %v", word^)
+        } else {
+            if tilde_starts {
+                result, _ = strings.replace(word^, "~", replace, 1)
+            } else if dollar_starts {
+                result, _ = strings.replace(word^, word^, replace, 1)
+            }
+        }
+    }
+
+    if result == "" {
+        result = word^
+    }
+
+    return result
 }
