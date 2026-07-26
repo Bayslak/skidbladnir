@@ -27,6 +27,7 @@ Given my love for Norse mithology and viking themes, the name comes from Skíðb
 | `pwd` | Print the current working directory |
 | `munin` | Print the session command history |
 | `munin <n>` | Re-run the command at history index `n` |
+| `huginn <path> <needle>` | Search recursively into the path selected for the typed string |
 | `edda` | List all built-in commands and their descriptions |
 | `exit` | Exit the shell |
 | `...` | More to come... |

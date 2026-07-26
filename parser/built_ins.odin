@@ -5,7 +5,7 @@ import "core:os"
 import "core:strings"
 import "core:strconv"
 
-BUILTINS :: []string{"cd", "pwd", "munin", "exit"}
+BUILTINS :: []string{"cd", "pwd", "munin", "huginn", "exit"}
 builtins_map: map[string]string
 
 setup_built_ins :: proc() {
@@ -14,6 +14,7 @@ setup_built_ins :: proc() {
     builtins_map["cd"] = "change directory"
     builtins_map["pwd"] = "print working directory"
     builtins_map["munin"] = "print list of history commands"
+    builtins_map["huginn"] = "look for argument in directory, recursively"
     builtins_map["exit"] = "exit skidbladnir"
 }
 
@@ -34,6 +35,8 @@ resolve_built_ins :: proc(arguments: []Token, history: ^[dynamic]string) -> (res
             return get_directory()
         case "munin":
             return resolve_munin(arguments, history)
+        case "huginn":
+            return resolve_huginn(arguments)
         case "exit":
             return exit_shell()
     }
@@ -110,6 +113,55 @@ resolve_munin :: proc(arguments: []Token, history: ^[dynamic]string) -> (result:
     }
 
     return true, "munin"
+}
+
+resolve_huginn :: proc(arguments: []Token) -> (result: bool, command: string) {
+
+    if len(arguments) < 3 {
+        fmt.println("huginn command needs 2 arguments.")
+        return false, arguments[0].value
+    }
+    search_dir(arguments[1].value, arguments[2].value)
+    return true, arguments[0].value
+}
+
+search_dir :: proc(path: string, needle: string) {
+    f, oerr := os.open(path)
+    if oerr != nil {
+        fmt.eprintfln("Could not open %s: %v", path, oerr)
+        return
+    }
+    defer os.close(f)
+
+    it := os.read_directory_iterator_create(f)
+    defer os.read_directory_iterator_destroy(&it)
+
+    for info in os.read_directory_iterator(&it) {
+        if p, err := os.read_directory_iterator_error(&it); err != nil {
+            fmt.eprintfln("Failed reading at %s: %v", p, err)
+            continue
+        }
+
+        if info.type == .Directory {
+            search_dir(info.fullpath, needle)   // recurse into subfolder
+            continue
+        }
+
+        if info.type == .Regular {
+            raw_chars, rerr := os.read_entire_file_from_path(info.fullpath, context.temp_allocator)
+            if rerr != nil {
+                // skip quietly
+                continue
+            }
+            if strings.contains(string(raw_chars), needle) {
+                fmt.printfln("%s", info.fullpath)
+            }
+        }
+    }
+
+    if p, err := os.read_directory_iterator_error(&it); err != nil {
+        fmt.eprintfln("Read directory failed at %s: %v", p, err)
+    }
 }
 
 exit_shell :: proc() -> (result: bool, command: string) {
