@@ -283,8 +283,7 @@ handle_tab :: proc() {
         dir_path := filepath.dir(token)
         prefix := filepath.base(token)
 
-        Cand :: struct { name: string, is_dir: bool }
-        possibilities: [dynamic]Cand
+        possibilities: [dynamic]string
 
         f, oerr := os.open(dir_path)
         if oerr != nil { return }
@@ -294,14 +293,14 @@ handle_tab :: proc() {
         defer os.read_directory_iterator_destroy(&it)
 
         for info in os.read_directory_iterator(&it) {
-            if strings.has_prefix(info.name, prefix) {
-                append(&possibilities, Cand { strings.clone(info.name, context.temp_allocator), info.type == .Directory })
+            if strings.has_prefix(info.name, prefix) && info.type == .Directory {
+                append(&possibilities, strings.clone(info.name, context.temp_allocator))
             }
         }
 
         if len(possibilities) == 1 {
             c := possibilities[0]
-            suffix := c.name[len(prefix):]
+            suffix := c[len(prefix):]
 
             for n in 0..<len(suffix){
                 char := suffix[n]
@@ -309,16 +308,16 @@ handle_tab :: proc() {
                     add_char_to_input(&char)
                 }
 
-            tail : u8 = c.is_dir ? '/' : ' '               // directory-aware trailing char
-            fmt.printf("%c", tail)
-            add_char_to_input(&tail)
+            fmt.printf("%c", '/')
+            char : u8 = '/'
+            add_char_to_input(&char)
         } else if len(possibilities) > 1 {
             fmt.printf("\n")
             for n in 0..<len(possibilities) {
                 if n != len(possibilities) - 1 {
-                    fmt.printf("%v, ", possibilities[n].name)
+                    fmt.printf("%v, ", possibilities[n])
                 } else {
-                    fmt.printf("%v\n", possibilities[n].name)
+                    fmt.printf("%v\n", possibilities[n])
                 }
             }
 
