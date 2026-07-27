@@ -18,7 +18,7 @@ Given my love for Norse mithology and viking themes, the name comes from Skíðb
   - command **history** (up/down arrows)
   - navigation in the input (left/right arrows)
 - Tilde and environment variable expansion
-- TAB completion, only working on builtins for now
+- TAB completion, working for builtins and partially for path
 
 ### Built-in commands
 

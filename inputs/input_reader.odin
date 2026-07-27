@@ -4,6 +4,7 @@ import "core:fmt"
 import "core:os"
 import "core:strings"
 import "core:strconv"
+import filepath "core:path/filepath"
 
 import parser "../parser"
 import display "../display"
@@ -278,6 +279,51 @@ handle_tab :: proc() {
         }
 
     } else if length >= 2 {
+        token := ss[len(ss) - 1]
+        dir_path := filepath.dir(token)
+        prefix := filepath.base(token)
 
+        Cand :: struct { name: string, is_dir: bool }
+        possibilities: [dynamic]Cand
+
+        f, oerr := os.open(dir_path)
+        if oerr != nil { return }
+        defer os.close(f)
+
+        it := os.read_directory_iterator_create(f)
+        defer os.read_directory_iterator_destroy(&it)
+
+        for info in os.read_directory_iterator(&it) {
+            if strings.has_prefix(info.name, prefix) {
+                append(&possibilities, Cand { strings.clone(info.name, context.temp_allocator), info.type == .Directory })
+            }
+        }
+
+        if len(possibilities) == 1 {
+            c := possibilities[0]
+            suffix := c.name[len(prefix):]
+
+            for n in 0..<len(suffix){
+                char := suffix[n]
+                fmt.printf("%c", char)
+                    add_char_to_input(&char)
+                }
+
+            tail : u8 = c.is_dir ? '/' : ' '               // directory-aware trailing char
+            fmt.printf("%c", tail)
+            add_char_to_input(&tail)
+        } else if len(possibilities) > 1 {
+            fmt.printf("\n")
+            for n in 0..<len(possibilities) {
+                if n != len(possibilities) - 1 {
+                    fmt.printf("%v, ", possibilities[n].name)
+                } else {
+                    fmt.printf("%v\n", possibilities[n].name)
+                }
+            }
+
+            display.display_wd()
+            paint_input()
+        }
     }
 }
