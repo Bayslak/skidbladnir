@@ -5,7 +5,10 @@ import "core:os"
 import "core:strings"
 import "core:strconv"
 
-KEYSTROKES :: enum { BACKSPACE, ENTER, CHARACTER, ESCAPE } 
+import parser "../parser"
+import display "../display"
+
+KEYSTROKES :: enum { BACKSPACE, ENTER, CHARACTER, TAB, ESCAPE } 
 keystrokes_map: map[u8]KEYSTROKES
 
 setup_keystrokes :: proc() {
@@ -14,6 +17,7 @@ setup_keystrokes :: proc() {
     keystrokes_map['\x7f'] = KEYSTROKES.BACKSPACE
     keystrokes_map['\r'] = KEYSTROKES.ENTER
     keystrokes_map['\n'] = KEYSTROKES.ENTER
+    keystrokes_map[9] = KEYSTROKES.TAB
     keystrokes_map[27] = KEYSTROKES.ESCAPE
 }
 
@@ -69,6 +73,9 @@ read_user_keystrokes :: proc(history: ^[dynamic]string) -> string {
 
                 result := strings.clone(strings.to_string(builder), context.temp_allocator)
                 return result
+            case .TAB:
+                handle_tab()
+                return ""
             case .ESCAPE:
                 cmd := handle_escape()
 
@@ -216,5 +223,61 @@ repaint_input :: proc() {
     // step the cursor back over the tail AND that space, landing at pos
     for i := 0; i < tail_len + 1; i += 1 {
         fmt.printf("\b")
+    }
+}
+
+paint_input :: proc() {
+    CONTROLLER.pos = 0
+
+    for n in CONTROLLER.pos..<len(CONTROLLER.input) {
+        fmt.printf("%c", CONTROLLER.input[n])
+        CONTROLLER.pos += 1
+    }
+}
+
+handle_tab :: proc() {
+    builder: strings.Builder
+    strings.builder_init(&builder, context.temp_allocator)
+
+    for i := 0; i < CONTROLLER.pos; i += 1 {
+        strings.write_byte(&builder, CONTROLLER.input[i])
+    }
+
+    input_as_string := strings.clone(strings.to_string(builder), context.temp_allocator)
+    ss := strings.split(input_as_string, " ", context.temp_allocator)
+
+    length := len(ss)
+
+    if length == 1 {
+        // we suppose its a command so we cycle through built ins
+        results: [dynamic]string
+
+        for key, _ in parser.builtins_map {
+            if strings.has_prefix(key, ss[len(ss) - 1]) {
+                append(&results, key)
+            }
+        }
+
+        if len(results) == 1 {
+            //here we should complete the command
+            suffix := results[0][len(ss[0]):]
+
+            for n in 0..<len(suffix){
+                char := suffix[n]
+                fmt.printf("%c", char)
+                    add_char_to_input(&char)
+                }
+        } else if len(results) > 1 {
+            fmt.printf("\n")
+            for n in 0..<len(results) {
+                fmt.println(results[n])
+            }
+
+            display.display_wd()
+            paint_input()
+        }
+
+    } else if length >= 2 {
+
     }
 }

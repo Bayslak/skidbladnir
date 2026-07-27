@@ -5,7 +5,7 @@ import "core:os"
 import "core:strings"
 import "core:strconv"
 
-BUILTINS :: []string{"cd", "pwd", "munin", "huginn", "exit"}
+BUILTINS :: []string{"cd", "edda", "pwd", "munin", "huginn", "exit"}
 builtins_map: map[string]string
 
 setup_built_ins :: proc() {
