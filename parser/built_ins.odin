@@ -4,8 +4,9 @@ import "core:fmt"
 import "core:os"
 import "core:strings"
 import "core:strconv"
+import filepath "core:path/filepath"
 
-BUILTINS :: []string{"cd", "edda", "pwd", "munin", "huginn", "exit"}
+BUILTINS :: []string{"cd", "edda", "pwd", "munin", "huginn", "bifrost", "exit"}
 builtins_map: map[string]string
 
 setup_built_ins :: proc() {
@@ -15,6 +16,7 @@ setup_built_ins :: proc() {
     builtins_map["pwd"] = "print working directory"
     builtins_map["munin"] = "print list of history commands"
     builtins_map["huginn"] = "look for argument in directory, recursively"
+    builtins_map["bifrost"] = "save directories path and travel to them faster"
     builtins_map["exit"] = "exit skidbladnir"
 }
 
@@ -37,6 +39,8 @@ resolve_built_ins :: proc(arguments: []Token, history: ^[dynamic]string) -> (res
             return resolve_munin(arguments, history)
         case "huginn":
             return resolve_huginn(arguments)
+        case "bifrost":
+            return resolve_bifrost(arguments)
         case "exit":
             return exit_shell()
     }
@@ -162,6 +166,81 @@ search_dir :: proc(path: string, needle: string) {
     if p, err := os.read_directory_iterator_error(&it); err != nil {
         fmt.eprintfln("Read directory failed at %s: %v", p, err)
     }
+}
+
+resolve_bifrost :: proc(arguments: []Token) -> (result: bool, command: string) {
+    conf_file, oerr := os.open("./.bifrost", { .Create, .Read, .Write, .Append })
+
+    arguments_length := len(arguments)
+
+    buff: [256]u8
+    length, roerr := os.read(conf_file, buff[:])
+
+    builder: strings.Builder
+    strings.builder_init(&builder, context.temp_allocator)
+
+    for n in 0..<len(buff) {
+        strings.write_byte(&builder, buff[n])
+    }
+
+    conf := strings.clone(strings.to_string(builder), context.temp_allocator)
+    splitted := strings.split(conf, "__", context.temp_allocator)
+
+    if arguments_length == 1 {
+        if length == 0 {
+            return false, ""
+        }
+        
+        // print all configuration saved
+        for n in 0..<len(splitted) {
+            sc_split := strings.split(splitted[n], "**", context.temp_allocator)
+            fmt.printf("%v**%v\n", sc_split[0], sc_split[1])
+        }
+    } else if arguments_length == 2 {
+        // check that the second argument is present in configuration
+    } else if arguments_length == 4 {
+        // check second argument is --set and third is a valid path
+        if arguments[1].value != "--set" {
+            fmt.println("Right now only --set is a valid argument for bifrost builtin.")
+            return false, ""
+        }
+
+        abs_path, aerr := filepath.abs(arguments[2].value)
+        
+        f, oerr := os.open(abs_path)
+        if oerr != nil {
+            fmt.eprintfln("Could not open %s: %v", abs_path, oerr)
+            return
+        }
+        
+        os.close(f)
+
+        builder: strings.Builder
+        strings.builder_init(&builder, context.temp_allocator)
+
+        if length > 0 {
+            strings.write_string(&builder, "__")
+        }
+
+        for n in 0..<len(arguments[3].value) {
+            strings.write_byte(&builder, arguments[3].value[n])
+        }
+
+        strings.write_byte(&builder, '*')
+        strings.write_byte(&builder, '*')
+
+        for n in 0..<len(abs_path) {
+            strings.write_byte(&builder, abs_path[n])
+        }
+
+        new_conf := strings.clone(strings.to_string(builder), context.temp_allocator)
+        _, werr := os.write_string(conf_file, new_conf[:])
+    } else {
+        fmt.printf("bifrost builtin need 4, 2 or no arguments\n")
+        return false, ""
+    }
+
+    return true, ""
 }
 
 exit_shell :: proc() -> (result: bool, command: string) {

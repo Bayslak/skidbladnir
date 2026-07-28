@@ -4,6 +4,7 @@ bin/
 *.pdb
 *.obj
 *.dll
+*.bifrost
 
 # VS Code
 .vscode/
