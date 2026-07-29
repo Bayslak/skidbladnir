@@ -169,7 +169,13 @@ search_dir :: proc(path: string, needle: string) {
 }
 
 resolve_bifrost :: proc(arguments: []Token) -> (result: bool, command: string) {
-    conf_file, oerr := os.open("./.bifrost", { .Create, .Read, .Write, .Append })
+    path := "~/.skidbladnir_bifrost"
+    expanded_conf_file := expand_word(&path)
+    conf_file, oerr := os.open(expanded_conf_file, { .Create, .Read, .Write, .Append })
+    if oerr != nil {
+        fmt.println(oerr)
+        return false, ""
+    }
 
     arguments_length := len(arguments)
 
@@ -198,6 +204,13 @@ resolve_bifrost :: proc(arguments: []Token) -> (result: bool, command: string) {
         }
     } else if arguments_length == 2 {
         // check that the second argument is present in configuration
+        for n in 0..<len(splitted) {
+            key_value := strings.split(splitted[n], "**", context.temp_allocator)
+            if key_value[0] == arguments[1].value {
+                cerr := os.change_directory(key_value[1])
+                return true, ""
+            }
+        }
     } else if arguments_length == 4 {
         // check second argument is --set and third is a valid path
         if arguments[1].value != "--set" {

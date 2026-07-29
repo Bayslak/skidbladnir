@@ -29,7 +29,7 @@ Given my love for Norse mithology and viking themes, the name comes from Skíðb
 | `munin` | Print the session command history |
 | `munin <n>` | Re-run the command at history index `n` |
 | `huginn <path> <needle>` | Search recursively into the path selected for the typed string |
-| `bifrost` | Read the bifrost configuration file point at bookmar**path |
+| `bifrost` | Read the bifrost configuration file point at bookmark**path |
 | `bifrost --set <path> <bookmark>` | Set a bookmark for a path via bifrost builtin |
 | `edda` | List all built-in commands and their descriptions |
 | `exit` | Exit the shell |
