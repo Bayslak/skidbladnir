@@ -181,15 +181,7 @@ resolve_bifrost :: proc(arguments: []Token) -> (result: bool, command: string) {
 
     buff: [256]u8
     length, roerr := os.read(conf_file, buff[:])
-
-    builder: strings.Builder
-    strings.builder_init(&builder, context.temp_allocator)
-
-    for n in 0..<len(buff) {
-        strings.write_byte(&builder, buff[n])
-    }
-
-    conf := strings.clone(strings.to_string(builder), context.temp_allocator)
+    conf := strings.clone(string(buff[:length]), context.temp_allocator)
     splitted := strings.split(conf, "__", context.temp_allocator)
 
     if arguments_length == 1 {
